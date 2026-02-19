@@ -1,0 +1,26 @@
+venv/
+env/
+ENV/
+
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+.vscode/
+*.code-workspace
+
+.ipynb_checkpoints
+*.ipynb
+
+
+chroma_db/           # Vector database (can be regenerated)
+data/*.pdf           # Don't upload PDFs (copyright)
+.DS_Store            # Mac system files
+Thumbs.db            # Windows system files
+
+.env
+*.env
+
+*.log
