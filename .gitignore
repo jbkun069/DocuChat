@@ -24,3 +24,5 @@ Thumbs.db            # Windows system files
 *.env
 
 *.log
+
+data/
