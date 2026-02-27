@@ -10,38 +10,49 @@ if sys.platform == "win32":
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
 
 
-def load_text_document(file_path: Path) -> None:
-    """Load and display text document content and metadata."""
-    loader = TextLoader(str(file_path), encoding="utf-8")
-    docs = loader.load()
-    print(docs[0])
+def load_document(file_path : Path) -> list:
+    """Load a document based on it's extension along with it's metadata"""
+    try:
+        if file_path.suffix.lower() == '.pdf':
+            loader = PyPDFLoader(str(file_path))
+        elif file_path.suffix.lower() == '.txt':
+            loader = TextLoader(str(file_path), encoding="utf-8")
+        else:
+            print(f"Unsupported File extension: {file_path.suffix}")
+            return []
+        docs = loader.load()
+        print(f"\n Loading :{file_path.name}")
+        print(f"Pages/chunks loaded: {len(docs)}")
+        return docs
+    except Exception as e:
+        print(f"Error in loading {file_path.name}: {e}")
+        return []
 
-
-def load_pdf_document(file_path: Path) -> None:
-    """Load and display PDF document content and metadata."""
-    Pdfloader = PyPDFLoader(str(file_path))
-    pdf_docs = Pdfloader.load()
-    print("\n--- PDF CONTENT ---")
-    print(pdf_docs[0])
-    print(Pdfloader.lazy_load())
 
 
 def main() -> None:
     """Main function to load and display document contents."""
     current_dir = Path(__file__).parent
-    file_path = current_dir / ".." / "data" / "AI.txt"
-    pdf_path = current_dir / ".." / "data" / "DA_2026_Syllabus.pdf"
-
+    datadir = current_dir / ".." / "data" 
+    
+    supported_extensions = {'.pdf', '.txt'}
+    
     try:
-        load_text_document(file_path)
-        load_pdf_document(pdf_path)
-
-        my_documents = TextLoader(str(file_path), encoding="utf-8").load()
-        content = my_documents[0].page_content
-        print("--- FILE CONTENT ---")
-        print(content)
-        print("\n--- METADATA ---")
-        print(my_documents[0].metadata)
+        my_documents = []
+        for file_path in datadir.iterdir():
+            if file_path.is_file() and file_path.suffix.lower() in supported_extensions:
+                docs = load_document(file_path)
+                my_documents.extend(docs)
+        
+        if my_documents:
+            print("\n--- FILE CONTENT ---")
+            content = my_documents[1].page_content
+            print(content)
+            print("\n--- METADATA ---")
+            print(my_documents[1].metadata)
+            print(f"\n--- TOTAL DOCUMENTS LOADED: {len(my_documents)} ---")
+        else:
+            print("No documents found in the data directory.")
 
     except Exception as e:
         print(f"Oops! Something went wrong: {e}")
