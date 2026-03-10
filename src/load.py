@@ -1,6 +1,7 @@
 import os
 import sys
 from pathlib import Path
+from langchain_huggingface import HuggingFaceEmbeddings
 
 if sys.platform == "win32":
     import types
@@ -8,6 +9,16 @@ if sys.platform == "win32":
     sys.modules["pwd"] = pwd
 
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
+
+model_name = "all-MiniLM-L6-v2"
+embeddings = HuggingFaceEmbeddings(model_name = model_name)
+
+text = "The secret password is banana."
+vector = embeddings.embed_query(text)
+
+print(f"Vector length: {len(vector)}")
+
+
 
 
 def load_document(file_path : Path) -> list:
@@ -58,5 +69,5 @@ def main() -> None:
         print(f"Oops! Something went wrong: {e}")
 
 
-if __name__ == "__main__":
-    main()
+#if __name__ == "__main__":
+   # main()
