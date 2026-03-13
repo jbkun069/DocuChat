@@ -51,11 +51,6 @@ def chunk_and_embed(documents: list, chunk_size: int = 500, chunk_overlap: int =
     chunk_texts = [chunk.page_content for chunk in chunks]
     vectors = embeddings.embed_documents(chunk_texts)
     
-    print(f"\n--- First Chunk Preview ---")
-    print(chunks[0].page_content[:200])
-    print(f"\n--- Embedding Vector Preview (First 5 numbers) ---")
-    print(vectors[0][:5])
-    
     return chunks, vectors
 
 
@@ -97,8 +92,6 @@ def main() -> None:
                  print("\n--- SIMILARITY SCORE ---")
                  print(score)
             
-            # print(f"\nTotal chunks: {len(chunks)}")
-            # print(f"Total vectors: {len(vectors)}")
         else:
             print("No documents found in the data directory.")
 
