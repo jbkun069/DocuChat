@@ -78,17 +78,27 @@ def main() -> None:
             
             print(f"\n--- TOTAL DOCUMENTS LOADED: {len(my_documents)} ---")
             chunks, vectors = chunk_and_embed(my_documents)
-            single_chunk = [chunks[0]]
             
             vectorstore = Chroma.from_documents(
-                documents = single_chunk,
+                documents = chunks,
                 embedding = embeddings
             )
             
             print("In-memory Chroma store created successfully!")
             
-            print(f"\nTotal chunks: {len(chunks)}")
-            print(f"Total vectors: {len(vectors)}")
+            test_str = "Machine Learning Algorithms"
+            result = vectorstore.similarity_search_with_score(test_str, k=3)
+            
+            if result:
+                for doc, score in result:
+                 print("\n--- RETRIEVED DOCUMENT ---")
+                 print(doc.page_content)
+
+                 print("\n--- SIMILARITY SCORE ---")
+                 print(score)
+            
+            # print(f"\nTotal chunks: {len(chunks)}")
+            # print(f"Total vectors: {len(vectors)}")
         else:
             print("No documents found in the data directory.")
 
