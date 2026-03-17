@@ -4,6 +4,7 @@ from pathlib import Path
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from  langchain_chroma import Chroma #type:ignore
+from config import Config
 
 if sys.platform == "win32":
     import types
@@ -70,27 +71,34 @@ def main() -> None:
                 my_documents.extend(docs)
         
         if my_documents:
-            
             print(f"\n--- TOTAL DOCUMENTS LOADED: {len(my_documents)} ---")
-            chunks, vectors = chunk_and_embed(my_documents)
-            
-            vectorstore = Chroma.from_documents(
-                documents = chunks,
-                embedding = embeddings
-            )
-            
-            print("In-memory Chroma store created successfully!")
-            
+            Config.DB_DIR.mkdir(parents=True, exist_ok=True)
+
+            if Config.DB_DIR.exists() and any(Config.DB_DIR.iterdir()):
+                print("Loading existing database from disk...")
+                vectorstore = Chroma(
+                    persist_directory=str(Config.DB_DIR),
+                    embedding_function=embeddings
+                )
+            else:
+                print("Creating new database...")
+                chunks, vectors = chunk_and_embed(my_documents)
+                vectorstore = Chroma.from_documents(
+                    documents=chunks,
+                    embedding=embeddings,
+                    persist_directory=str(Config.DB_DIR)
+                )
+                print(f"Chroma store persisted at: {Config.DB_DIR}")
+
             test_str = "Machine Learning Algorithms"
             result = vectorstore.similarity_search_with_score(test_str, k=3)
-            
+
             if result:
                 for doc, score in result:
-                 print("\n--- RETRIEVED DOCUMENT ---")
-                 print(doc.page_content)
-
-                 print("\n--- SIMILARITY SCORE ---")
-                 print(score)
+                    print("\n--- RETRIEVED DOCUMENT ---")
+                    print(doc.page_content)
+                    print("\n--- SIMILARITY SCORE ---")
+                    print(score)
             
         else:
             print("No documents found in the data directory.")
