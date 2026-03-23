@@ -5,6 +5,8 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from  langchain_chroma import Chroma #type:ignore
 from config import Config
+from langchain_google_genai import ChatGoogleGenerativeAI # type: ignore
+from langchain_core.prompts import ChatPromptTemplate
 
 if sys.platform == "win32":
     import types
@@ -15,6 +17,17 @@ from langchain_community.document_loaders import PyPDFLoader, TextLoader
 
 model_name = "all-MiniLM-L6-v2"
 embeddings = HuggingFaceEmbeddings(model_name = model_name)
+
+llm = ChatGoogleGenerativeAI(
+    model=Config.LLM_MODEL,
+    google_api_key=Config.GEMINI_API_KEY,
+    temperature=0.3  
+)
+
+template = ChatPromptTemplate.from_messages([
+    ("system", "You are a helpful assistant. Use the provided context to answer the question. If you don't know the answer, say you don't know based on the files provided."),
+    ("human", "Context:\n{context}\n\nQuestion: {question}")
+])
 
 def load_document(file_path : Path) -> list:
     """Load a document based on it's extension along with it's metadata"""
@@ -90,15 +103,17 @@ def main() -> None:
                 )
                 print(f"Chroma store persisted at: {Config.DB_DIR}")
 
-            test_str = "Machine Learning Algorithms"
-            result = vectorstore.similarity_search_with_score(test_str, k=3)
-
-            if result:
-                for doc, score in result:
-                    print("\n--- RETRIEVED DOCUMENT ---")
-                    print(doc.page_content)
-                    print("\n--- SIMILARITY SCORE ---")
-                    print(score)
+            query = "Explain the difference between supervised and unsupervised learning"
+            results = vectorstore.similarity_search(query, k=3)
+            context_text = "\n\n---\n\n".join([doc.page_content for doc in results])
+            formatted_prompt = template.format_messages(
+                context=context_text, 
+                question=query
+            )
+            print("\n--- AI IS THINKING ---")
+            response = llm.invoke(formatted_prompt)
+            print("\n--- AI ANSWER ---")
+            print(response.content)
             
         else:
             print("No documents found in the data directory.")
