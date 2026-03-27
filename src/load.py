@@ -40,8 +40,6 @@ def load_document(file_path : Path) -> list:
             print(f"Unsupported File extension: {file_path.suffix}")
             return []
         docs = loader.load()
-        print(f"\n Loading :{file_path.name}")
-        print(f"Pages/chunks loaded: {len(docs)}")
         return docs
     except Exception as e:
         print(f"Error in loading {file_path.name}: {e}")
@@ -103,7 +101,7 @@ def main() -> None:
                 )
                 print(f"Chroma store persisted at: {Config.DB_DIR}")
 
-            query = "Explain the difference between supervised and unsupervised learning"
+            query = input("Enter your query: ")
             results = vectorstore.similarity_search(query, k=3)
             context_text = "\n\n---\n\n".join([doc.page_content for doc in results])
             formatted_prompt = template.format_messages(
