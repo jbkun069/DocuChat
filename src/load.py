@@ -1,9 +1,8 @@
-import os
 import sys
 from pathlib import Path
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from  langchain_chroma import Chroma #type:ignore
+from langchain_chroma import Chroma #type:ignore
 from config import Config
 from langchain_google_genai import ChatGoogleGenerativeAI # type: ignore
 from langchain_core.prompts import ChatPromptTemplate
@@ -104,10 +103,10 @@ def main() -> None:
             query = input("Enter your query: ")
             results = vectorstore.similarity_search(query, k=3)
             context_text = "\n\n---\n\n".join([doc.page_content for doc in results])
-            formatted_prompt = template.format_messages(
-                context=context_text, 
-                question=query
-            )
+            formatted_prompt = template.invoke({
+                "context": context_text, 
+                "question": query
+            })
             print("\n--- AI IS THINKING ---")
             response = llm.invoke(formatted_prompt)
             print("\n--- AI ANSWER ---")
