@@ -24,7 +24,7 @@ llm = ChatGoogleGenerativeAI(
 )
 
 template = ChatPromptTemplate.from_messages([
-    ("system", "You are a helpful assistant. Use the provided context to answer the question. If you don't know the answer, say you don't know based on the files provided."),
+    ("system", "You are an expert academic assistant. Use the provided context to answer the question comprehensively and in detail. When asked to compare or find overlaps, analyze the text thoroughly. If the context does not contain the answer, explicitly state that you don't know based on the provided files."),
     ("human", "Context:\n{context}\n\nQuestion: {question}")
 ])
 
@@ -45,7 +45,7 @@ def load_document(file_path : Path) -> list:
         return []
 
 
-def chunk_and_embed(documents: list, chunk_size: int = 500, chunk_overlap: int = 50) -> tuple:
+def chunk_and_embed(documents: list, chunk_size: int = 1500, chunk_overlap: int = 200) -> tuple:
     """Split documents into chunks and generate embeddings for each chunk."""
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
@@ -69,7 +69,7 @@ def answer_questions(question : str, vectorstore, llm, prompt_template):
     Takes a user question, retrieves context, and returns an AI-generated answer.
     """
     print(f"\n[Searching your files for: '{question}']...")
-    results = vectorstore.similarity_search(question, k=3)
+    results = vectorstore.similarity_search(question, k=6)
     
     context_text = "\n---CHUNK---\n".join([doc.page_content for doc in results])
     if not context_text:
