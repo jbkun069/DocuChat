@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_chroma import Chroma #type:ignore
+from langchain_community.vectorstores import Chroma
 from config import Config
 from langchain_google_genai import ChatGoogleGenerativeAI # type: ignore
 from langchain_core.prompts import ChatPromptTemplate
@@ -64,6 +64,24 @@ def chunk_and_embed(documents: list, chunk_size: int = 500, chunk_overlap: int =
     
     return chunks, vectors
 
+def answer_questions(question : str, vectorstore, llm, prompt_template):
+    """
+    Takes a user question, retrieves context, and returns an AI-generated answer.
+    """
+    print(f"\n[Searching your files for: '{question}']...")
+    results = vectorstore.similarity_search(question, k=3)
+    
+    context_text = "\n---CHUNK---\n".join([doc.page_content for doc in results])
+    if not context_text:
+        return "I couldn't find any relevant information in the provided documents"
+    
+    formatted_prompt = prompt_template.format_messages(
+        context=context_text, 
+        question=question
+    )
+    response = llm.invoke(formatted_prompt)
+    
+    return response.content 
 
 def main() -> None:
     """Main function to load and display document contents."""
@@ -100,20 +118,22 @@ def main() -> None:
                 )
                 print(f"Chroma store persisted at: {Config.DB_DIR}")
 
-            query = input("Enter your query: ")
-            results = vectorstore.similarity_search(query, k=3)
-            context_text = "\n\n---\n\n".join([doc.page_content for doc in results])
-            formatted_prompt = template.invoke({
-                "context": context_text, 
-                "question": query
-            })
-            print("\n--- AI IS THINKING ---")
-            response = llm.invoke(formatted_prompt)
-            print("\n--- AI ANSWER ---")
-            print(response.content)
-            
-        else:
-            print("No documents found in the data directory.")
+            test_questions = [
+                "List the subjects under DA syllabus",
+                "List the subjects under CS syllabus",
+                "Find any topics overlap(if any) between the subjects",
+            ]
+
+            for q in test_questions:
+                answer = answer_questions(
+                    question=q, 
+                    vectorstore=vectorstore, 
+                    llm=llm, 
+                    prompt_template=template
+                )
+                print("\n🤖 AI ANSWER:")
+                print(answer)
+                print("-" * 40)
 
     except Exception as e:
         print(f"Oops! Something went wrong: {e}")
