@@ -6,6 +6,8 @@ from langchain_community.vectorstores import Chroma
 from config import Config
 from langchain_google_genai import ChatGoogleGenerativeAI # type: ignore
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnablePassthrough
+from langchain_core.output_parsers import StrOutputParser
 
 if sys.platform == "win32":
     import types
@@ -64,24 +66,40 @@ def chunk_and_embed(documents: list, chunk_size: int = 1500, chunk_overlap: int 
     
     return chunks, vectors
 
-def answer_questions(question : str, vectorstore, llm, prompt_template):
+def create_qa_chain(vectorstore, llm, prompt_template):
+    retriever = vectorstore.as_retriever(search_kwargs={"k": 6})
+
+    def format_docs(docs):
+        return "\n\n".join(doc.page_content for doc in docs)
+
+    chain = (
+        {"context": retriever | format_docs, "question": RunnablePassthrough()}
+        | prompt_template
+        | llm
+        | StrOutputParser()
+    )
+
+    return chain
+
+
+def answer_questions(question: str, qa_chain) -> str:
     """
-    Takes a user question, retrieves context, and returns an AI-generated answer.
+    Takes a user question and returns an AI-generated answer using the QA chain.
+    
+    Args:
+        question: The user's question
+        qa_chain: The LCEL QA chain instance
+        
+    Returns:
+        The AI-generated answer or an error message
     """
     print(f"\n[Searching your files for: '{question}']...")
-    results = vectorstore.similarity_search(question, k=6)
-    
-    context_text = "\n---CHUNK---\n".join([doc.page_content for doc in results])
-    if not context_text:
-        return "I couldn't find any relevant information in the provided documents"
-    
-    formatted_prompt = prompt_template.format_messages(
-        context=context_text, 
-        question=question
-    )
-    response = llm.invoke(formatted_prompt)
-    
-    return response.content 
+    try:
+        result = qa_chain.invoke(question)
+        return result
+    except Exception as e:
+        print(f"Error generating answer: {e}")
+        return "I couldn't find any relevant information in the provided documents" 
 
 def main() -> None:
     """Main function to load and display document contents."""
@@ -110,13 +128,19 @@ def main() -> None:
                 )
             else:
                 print("Creating new database...")
-                chunks, vectors = chunk_and_embed(my_documents)
+                chunks, _ = chunk_and_embed(my_documents)
                 vectorstore = Chroma.from_documents(
                     documents=chunks,
                     embedding=embeddings,
                     persist_directory=str(Config.DB_DIR)
                 )
                 print(f"Chroma store persisted at: {Config.DB_DIR}")
+
+            qa_chain = create_qa_chain(
+                vectorstore=vectorstore,
+                llm=llm,
+                prompt_template=template
+            )
 
             test_questions = [
                 "List the subjects under DA syllabus",
@@ -127,9 +151,7 @@ def main() -> None:
             for q in test_questions:
                 answer = answer_questions(
                     question=q, 
-                    vectorstore=vectorstore, 
-                    llm=llm, 
-                    prompt_template=template
+                    qa_chain=qa_chain
                 )
                 print("\n🤖 AI ANSWER:")
                 print(answer)
