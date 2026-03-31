@@ -109,8 +109,10 @@ def answer_questions(question: str, qa_chain):
 
         print("\n📄 SOURCES:\n")
         for i, doc in enumerate(result["source_documents"], 1):
+            
             source = doc.metadata.get("source", "unknown")
             page = doc.metadata.get("page", "N/A")
+            
             print(f"{i}. {source} (page {page})")
 
         return result["answer"]
