@@ -22,7 +22,11 @@ llm = ChatGoogleGenerativeAI(
 )
 
 template = ChatPromptTemplate.from_messages([
-    ("system", "You are an expert academic assistant..."),
+    ("system",
+     "You are an expert academic assistant. Your primary goal is to answer using the provided context. "
+     "If the provided context contains the answer, use it to respond comprehensively. "
+     "If the context does NOT contain the answer, you may rely on your general knowledge, BUT you must start your answer by stating: 'I couldn't find this in the provided documents, but based on my general knowledge...'."
+    ),
     ("human", "Context:\n{context}\n\nQuestion: {question}")
 ])
 
