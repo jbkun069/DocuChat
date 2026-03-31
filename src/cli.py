@@ -49,8 +49,16 @@ def main():
                 page = doc.metadata.get("page", "N/A")
                 print(f"   {i}. {source} (page {page})")
             
+        except ValueError as ve:
+            print(f"\n❌ CONFIGURATION ERROR: {ve}")
+            print("Tip: Check your .env file and ensure your GEMINI_API_KEY is correct.")
+            continue
+        
         except Exception as e:
-            print(f"\n❌ An error occurred: {e}")
+            print(f"\n❌ PIPELINE ERROR: The connection to the AI or Database failed.")
+            print(f"Technical Details: {str(e)}")
+            continue
+        
             
 if __name__ == "__main__":
     main()
