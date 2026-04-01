@@ -18,7 +18,7 @@ embeddings = HuggingFaceEmbeddings(model_name=model_name)
 llm = ChatGoogleGenerativeAI(
     model=Config.LLM_MODEL,
     google_api_key=Config.GEMINI_API_KEY,
-    temperature=0.3,
+    temperature=0.4,
 )
 
 template = ChatPromptTemplate.from_messages([
@@ -45,7 +45,7 @@ def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
 
 def create_qa_chain(vectorstore, llm, prompt_template):
-    retriever = vectorstore.as_retriever(search_kwargs={"k": 6})
+    retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
     
     answer_chain = (
         {"context": lambda x: format_docs(x["source_documents"]), "question": lambda x: x["question"]}
