@@ -2,23 +2,26 @@ import sys
 from pathlib import Path
 
 from langchain_community.vectorstores import Chroma 
-from langchain_huggingface import HuggingFaceEmbeddings
+
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
-
+from langchain_huggingface import HuggingFaceEmbeddings
 from config import Config
 from langchain_google_genai import ChatGoogleGenerativeAI #type:ignore  
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough, RunnableParallel
 from langchain_core.output_parsers import StrOutputParser
 
-model_name = "all-MiniLM-L6-v2"
-embeddings = HuggingFaceEmbeddings(model_name=model_name)
+model_path = "onnx_model"
+embeddings = HuggingFaceEmbeddings(
+    model_name=model_path,
+    model_kwargs={"backend": "onnx"}
+)
 
 llm = ChatGoogleGenerativeAI(
     model=Config.LLM_MODEL,
     google_api_key=Config.GEMINI_API_KEY,
-    temperature=0.4,
+    temperature=0.2,
 )
 
 template = ChatPromptTemplate.from_messages([
