@@ -24,10 +24,32 @@ def init_qa_engine():
 
 qa_chain = init_qa_engine()
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+if "chats" not in st.session_state:
+    st.session_state.chats = {}
+    st.session_state.current_chat = None
 
-for message in st.session_state.messages:
+if st.session_state.current_chat is None:
+    if st.session_state.chats:
+        st.session_state.current_chat = next(iter(st.session_state.chats))
+    else:
+        st.session_state.current_chat = "chat_1"
+        st.session_state.chats.setdefault(st.session_state.current_chat, [])
+
+with st.sidebar:
+    st.title("🧠 DocuChat")
+    
+    if st.button("➕ New Chat"):
+        chat_id = f"chat_{len(st.session_state.chats)+1}"
+        st.session_state.chats[chat_id] = []
+        st.session_state.current_chat = chat_id
+        
+    for chat_id in st.session_state.chats:
+        if st.button(chat_id):
+            st.session_state.current_chat = chat_id
+
+messages = st.session_state.chats.get(st.session_state.current_chat, [])
+
+for message in messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
         
@@ -41,8 +63,11 @@ for message in st.session_state.messages:
 
 
 if prompt := st.chat_input("Ask a question about your documents..."):
-    
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    if st.session_state.current_chat is None:
+        st.session_state.current_chat = "chat_1"
+        st.session_state.chats.setdefault(st.session_state.current_chat, [])
+
+    st.session_state.chats[st.session_state.current_chat].append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
     
@@ -62,7 +87,7 @@ if prompt := st.chat_input("Ask a question about your documents..."):
                         st.json(doc.metadata)      
                         st.markdown("---")
                         
-                st.session_state.messages.append({
+                st.session_state.chats[st.session_state.current_chat].append({
                     "role": "assistant", 
                     "content": answer,
                     "sources": sources 
