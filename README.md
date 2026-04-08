@@ -3,7 +3,9 @@
 A RAG (Retrieval-Augmented Generation) chatbot that answers questions based on your documents.
 
 ## Features
-- Upload PDFs, text files, or markdown documents
+- Support for PDF and Text documents
 - Ask questions in natural language
-- Get answers with source citations
-- Runs completely locally (free, private)
+- Get answers with direct source citations and metadata
+- Streamlit web interface with multiple chat sessions and history tracking
+- Command-line interface (CLI) for quick terminal usage
+- Powered by Google Gemini AI and local HuggingFace embeddings
