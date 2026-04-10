@@ -1,7 +1,7 @@
 import streamlit as st  # type: ignore
 from config import Config
 from langchain_community.vectorstores import Chroma
-from load import embeddings, llm, template, create_qa_chain
+from load import embeddings, llm, template, create_qa_chain, load_document, chunk_documents
 
 st.set_page_config(
     page_title="DocuChat",
@@ -23,6 +23,25 @@ def init_qa_engine():
     return create_qa_chain(vectorstore, llm, template)
 
 qa_chain = init_qa_engine()
+
+uploaded_file = st.file_uploader("Upload a PDF, TXT or docx file", type=["pdf", "txt", "docx"])
+if uploaded_file is not None:
+    Config.DATA_DIR.mkdir(parents=True, exist_ok=True)
+    file_path = Config.DATA_DIR / uploaded_file.name
+    with open(file_path, "wb") as f:
+        f.write(uploaded_file.getbuffer())
+    
+    with st.spinner("Processing document..."):
+        docs = load_document(file_path)
+        if docs:
+            chunks = chunk_documents(docs)
+            vectorstore = Chroma(
+                persist_directory=str(Config.DB_DIR),
+                embedding_function=embeddings
+            )
+            vectorstore.add_documents(chunks)
+            st.success(f"Successfully processed {uploaded_file.name}!")
+            init_qa_engine.clear()
 
 if "chats" not in st.session_state:
     st.session_state.chats = {}
