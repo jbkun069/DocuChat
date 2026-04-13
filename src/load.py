@@ -4,7 +4,7 @@ from pathlib import Path
 from langchain_community.vectorstores import Chroma 
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import PyPDFLoader, TextLoader
+from langchain_community.document_loaders import PyPDFLoader, TextLoader, Docx2txtLoader
 from langchain_huggingface import HuggingFaceEmbeddings
 from config import Config
 from langchain_google_genai import ChatGoogleGenerativeAI #type:ignore  
@@ -38,6 +38,8 @@ def load_document(file_path: Path) -> list:
         return PyPDFLoader(str(file_path)).load()
     elif file_path.suffix.lower() == ".txt":
         return TextLoader(str(file_path), encoding="utf-8").load()
+    elif file_path.suffix.lower() == ".docx":
+        return Docx2txtLoader(str(file_path)).load()
     return []
 
 def chunk_documents(documents):
