@@ -9,8 +9,6 @@ class Config:
     
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
     
-    GOOGLE_API_KEY = os.getenv("GEMINI_API_KEY") 
-    
     EMBEDDING_MODEL = "models/text-embedding-004"
     LLM_MODEL = "gemini-2.5-flash"
 
