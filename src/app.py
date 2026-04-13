@@ -82,7 +82,7 @@ if uploaded_file is not None:
                 embedding_function=embeddings
             )
             vectorstore.add_documents(chunks)
-            st.success(f"Successfully processed {uploaded_file.name}!")
+            st.success(f"✅ Document {uploaded_file.name} added — your next question will search it!")
             init_qa_engine.clear()
 
 if "messages" not in st.session_state:
@@ -127,8 +127,7 @@ if prompt := st.chat_input("Ask a question about your documents..."):
                         
                 st.session_state.messages.append({
                     "role": "assistant", 
-                    "content": answer,
-                    "sources": sources 
+                    "content": answer
                 })
                 save_chat_history(st.session_state.messages)
                 
