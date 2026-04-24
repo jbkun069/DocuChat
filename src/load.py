@@ -58,12 +58,15 @@ def create_qa_chain(vectorstore, llm, prompt_template):
     )
     
     rag_chain = (
-        {"question": RunnablePassthrough()}
+        {
+            "source_documents": retriever,
+            "question": RunnablePassthrough(),
+        }
         | RunnableParallel(
-            question=RunnablePassthrough(),
-            source_documents=retriever,
+            answer=answer_chain,
+            source_documents=lambda x: x["source_documents"],
+            question=lambda x: x["question"]
         )
-        .assign(answer=answer_chain)
     )
     
     return rag_chain

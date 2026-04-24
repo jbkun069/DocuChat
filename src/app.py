@@ -1,135 +1,102 @@
-import json
-import streamlit as st  # type: ignore
+import chainlit as cl # type: ignore
+from langchain_community.vectorstores import Chroma
 from langchain_core.documents import Document
 from config import Config
-from langchain_community.vectorstores import Chroma
 from load import embeddings, llm, template, create_qa_chain, load_document, chunk_documents
+import tempfile
+from pathlib import Path
 
-st.set_page_config(
-    page_title="DocuChat",
-    page_icon="🧠",
-    layout="centered"
-)
-st.title("📚 Academic Chatbot Assistant")
+@cl.on_chat_start
+async def on_chat_start():
+    """Initialize the QA chain and store it in the user's session."""
 
-@st.cache_resource
-def init_qa_engine():
     if not Config.DB_DIR.exists():
-        st.error("Database not found! Run load.py first.")
-        st.stop()
-    
+        # cl.Message sends a message to the chat UI
+        await cl.Message(
+            content="❌ Database not found! Please run `load.py` first."
+        ).send()
+        return
+
     vectorstore = Chroma(
         persist_directory=str(Config.DB_DIR),
         embedding_function=embeddings
     )
-    return create_qa_chain(vectorstore, llm, template)
+    qa_chain = create_qa_chain(vectorstore, llm, template)
 
-qa_chain = init_qa_engine()
+    cl.user_session.set("qa_chain", qa_chain)
+    cl.user_session.set("vectorstore", vectorstore)
 
-chat_history_path = Config.DATA_DIR / "chat_history.json"
+    await cl.Message(
+        content="👋 Hello! I'm your Academic Assistant. Upload a document or ask me anything."
+    ).send()
 
-def load_chat_history():
-    if chat_history_path.exists():
-        with open(chat_history_path, "r", encoding="utf-8") as f:
-            try:
-                data = json.load(f)
-                for msg in data:
-                    if "sources" in msg:
-                        msg["sources"] = [
-                            Document(page_content=s.get("page_content", ""), metadata=s.get("metadata", {})) 
-                            for s in msg["sources"]
-                        ]
-                return data
-            except Exception:
-                return []
-    return []
+@cl.on_message
+async def on_message(message: cl.Message):
+    """Handle incoming user messages."""
 
-def save_chat_history(messages):
-    Config.DATA_DIR.mkdir(parents=True, exist_ok=True)
-    data = []
-    for msg in messages:
-        msg_copy = {"role": msg["role"], "content": msg["content"]}
-        if "sources" in msg:
-            msg_copy["sources"] = [
-                {"page_content": s.page_content, "metadata": s.metadata} 
-                for s in msg["sources"]
-            ]
-        data.append(msg_copy)
-    with open(chat_history_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4)
+    qa_chain = cl.user_session.get("qa_chain")
 
-with st.sidebar:
-    st.title("🧠 DocuChat")
-    if st.button("🗑️ Clear Chat"):
-        st.session_state.messages = []
-        if chat_history_path.exists():
-            chat_history_path.unlink()
-        st.rerun()
 
-uploaded_file = st.file_uploader("Upload a PDF, TXT or docx file", type=["pdf", "txt", "docx"])
-if uploaded_file is not None:
-    Config.DATA_DIR.mkdir(parents=True, exist_ok=True)
-    file_path = Config.DATA_DIR / uploaded_file.name
-    with open(file_path, "wb") as f:
-        f.write(uploaded_file.getbuffer())
-    
-    with st.spinner("Processing document..."):
-        docs = load_document(file_path)
-        if docs:
-            chunks = chunk_documents(docs)
-            vectorstore = Chroma(
-                persist_directory=str(Config.DB_DIR),
-                embedding_function=embeddings
-            )
-            vectorstore.add_documents(chunks)
-            st.success(f"✅ Document {uploaded_file.name} added — your next question will search it!")
-            init_qa_engine.clear()
+    if message.elements:
+        vectorstore = cl.user_session.get("vectorstore")
+        processed_files = []
 
-if "messages" not in st.session_state:
-    st.session_state.messages = load_chat_history()
+        for file_element in message.elements:
+            file_path = Path(file_element.path)
 
-messages = st.session_state.messages
+            docs = load_document(file_path)
+            if docs:
+                chunks = chunk_documents(docs)
+                vectorstore.add_documents(chunks)
+                processed_files.append(file_element.name)
 
-for message in messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+        if processed_files:
+            qa_chain = create_qa_chain(vectorstore, llm, template)
+            cl.user_session.set("qa_chain", qa_chain)
+            cl.user_session.set("vectorstore", vectorstore)
+
+            await cl.Message(
+                content=f"✅ Processed: {', '.join(processed_files)}. You can now ask questions about them!"
+            ).send()
+
+        # If the message was ONLY a file with no text question, stop here
+        if not message.content.strip():
+            return
+
+    response_message = cl.Message(content="")
+    await response_message.send()  # sends the empty "bubble" first
+
+    try:
+        result = await cl.make_async(qa_chain.invoke)(message.content)
+        answer = result["answer"]
+        sources = result["source_documents"]
+
+        # Update the message bubble with the actual answer
+        response_message.content = answer
+        await response_message.update()
         
-        if "sources" in message:
-            with st.expander("🔍 View Sources & Metadata"):
-                for i, doc in enumerate(message["sources"], 1):
-                    st.markdown(f"**Source {i}: {doc.metadata.get('source', 'Unknown File')}**")
-                    st.write(doc.page_content)
-                    st.json(doc.metadata)
-                    st.markdown("---") 
+        source_elements = []
+        for i, doc in enumerate(sources, 1):
+            source_name = doc.metadata.get("source", f"Source {i}")
+            
+            source_elements.append(
+                cl.Text(
+                    name=f"📄 {Path(source_name).name} — chunk {i}",
+                    content=f"**File:** {source_name}\n\n{doc.page_content}",
+                    display="side"  
+                )
+            )
+
+        if source_elements:
+           
+            response_message.elements = source_elements
+            await response_message.update()
+
+    except Exception as e:
+        response_message.content = f"❌ Error: {str(e)}"
+        await response_message.update()
 
 
-if prompt := st.chat_input("Ask a question about your documents..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    save_chat_history(st.session_state.messages)
-    with st.chat_message("user"):
-        st.markdown(prompt)
-    
-    with st.chat_message("assistant"):
-        with st.spinner("Analyzing documents..."):
-            try:
-                result = qa_chain.invoke(prompt)
-                answer = result["answer"]
-                sources = result["source_documents"]
-                
-                st.markdown(answer)
-                
-                with st.expander("🔍 View Sources & Metadata"):
-                    for i, doc in enumerate(sources, 1):
-                        st.markdown(f"**Source {i}: {doc.metadata.get('source', 'Unknown File')}**")
-                        st.write(doc.page_content) 
-                        st.json(doc.metadata)      
-                        st.markdown("---")
-                        
-                st.session_state.messages.append({
-                    "role": "assistant", 
-                    "content": answer
-                })
-                save_chat_history(st.session_state.messages)
-                
-            except Exception as e:
-                st.error(f"Error: {e}")
+@cl.on_chat_end
+async def on_chat_end():
+    print("Session ended.")
