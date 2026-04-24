@@ -12,7 +12,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough, RunnableParallel
 from langchain_core.output_parsers import StrOutputParser
 
-model_path = "onnx_model"
+model_path = str(Path(__file__).parent / "onnx_model")
 embeddings = HuggingFaceEmbeddings(
     model_name=model_path,
     model_kwargs={"backend": "onnx"}
