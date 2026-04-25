@@ -83,12 +83,24 @@ def main():
     datadir = Config.DATA_DIR
     documents = []
 
+    # Support PDF, TXT, and DOCX files
+    supported_formats = {".pdf", ".txt", ".docx"}
+    
     for file_path in datadir.iterdir():
-        if file_path.suffix.lower() in {".pdf", ".txt"}:
-            documents.extend(load_document(file_path))
+        if file_path.suffix.lower() in supported_formats:
+            try:
+                loaded_docs = load_document(file_path)
+                if loaded_docs:
+                    documents.extend(loaded_docs)
+                    print(f"✅ Loaded: {file_path.name} ({len(loaded_docs)} documents)")
+                else:
+                    print(f"⚠️ No content extracted from: {file_path.name}")
+            except Exception as e:
+                print(f"❌ Error loading {file_path.name}: {e}")
 
     if documents:
         chunks = chunk_documents(documents)
+        print(f"📊 Created {len(chunks)} chunks from {len(documents)} documents")
         Chroma.from_documents(
             documents=chunks,
             embedding=embeddings,

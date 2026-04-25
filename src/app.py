@@ -42,15 +42,30 @@ async def on_message(message: cl.Message):
         processed_files = []
 
         for file_element in message.elements:
-            file_path = Path(file_element.path)
+            try:
+                file_path = Path(file_element.path)
+                
+                # Verify file exists and is readable
+                if not file_path.exists():
+                    cl.Message(content=f"❌ File not found: {file_element.name}").send()
+                    continue
 
-            docs = load_document(file_path)
-            if docs:
-                chunks = chunk_documents(docs)
-                vectorstore.add_documents(chunks)
-                processed_files.append(file_element.name)
+                docs = load_document(file_path)
+                if docs:
+                    chunks = chunk_documents(docs)
+                    vectorstore.add_documents(chunks)
+                    # **CRITICAL**: Persist the vectorstore to disk
+                    vectorstore.persist()
+                    processed_files.append(file_element.name)
+                    print(f"✅ Successfully loaded: {file_element.name}")
+                else:
+                    await cl.Message(content=f"⚠️ Could not process: {file_element.name}").send()
+            except Exception as e:
+                await cl.Message(content=f"❌ Error processing {file_element.name}: {str(e)}").send()
+                print(f"Error loading file {file_element.name}: {e}")
 
         if processed_files:
+            # Create fresh qa_chain with updated vectorstore
             qa_chain = create_qa_chain(vectorstore, llm, template)
             cl.user_session.set("qa_chain", qa_chain)
             cl.user_session.set("vectorstore", vectorstore)
