@@ -28,3 +28,4 @@ Thumbs.db            # Windows system files
 data/
 vector_db/
 onnx_model/
+.files/
